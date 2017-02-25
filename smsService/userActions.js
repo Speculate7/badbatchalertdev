@@ -151,6 +151,7 @@ var UserActions = function() {
        //lookup call stack and api on findquery.on
        //HW find out how to get the value of region to return so that it is usable by other functions
   }  
+  //function 3
   self.resourceByRegion = function(region)
   {
     console.log("resourceByRegion");
