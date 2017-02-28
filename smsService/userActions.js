@@ -139,6 +139,7 @@ var UserActions = function() {
   self.regionByUser = function()
   {
       // function queries the region of the user based on their set location in the database
+    console.log("regionByUser");
     var cryptoSender = g.cryptoHelper.encrypt(sender);
     var findQueryString = "SELECT * FROM users WHERE phone_number = '" + cryptoSender + "'";
     var findQuery = client.query(findQueryString);
