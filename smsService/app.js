@@ -65,6 +65,7 @@ app.post('/sms/receive', bodyParser, function (req, res) {
 
   //connect to the db
   pg.defaults.ssl = true;
+  doAction(res, client, sender, body);
   pg.connect(process.env.DATABASE_URL, function(err, client) {
     if (err) throw err;
     console.log('Connected to db');
@@ -77,11 +78,9 @@ app.post('/sms/receive', bodyParser, function (req, res) {
     var insertQuery = client.query(insertQueryString);
     insertQuery.on('error', function() {
       console.log("It's cool we're already in here.");
-      doAction(res, client, sender, body);
     });
     insertQuery.on('end', function() {
       console.log("New User Added.");
-      doAction(res, client, sender, body);
     });
   });
 });
