@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+//<<<<<<< HEAD
 // 
 // A collection of functions that the user can initiate by texting different messages.*/
 //
@@ -528,4 +528,4 @@ var UserActions = function() {
 
 
 module.exports = UserActions;
->>>>>>> 42945dabe1b8c81877c8d578e422c7c77df1d471
+//>>>>>>> 42945dabe1b8c81877c8d578e422c7c77df1d471
