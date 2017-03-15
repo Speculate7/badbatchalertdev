@@ -274,9 +274,9 @@ var UserActions = function() {
   var self = this;
   var commands =["near","join","help","map","leave","report","resources","i am"];
 
-  self.userResponse = function(body)
+  self.userResponse = function(body, media)
   {
-    var resp  = '<Response><Message><Body>' + body  + '</Body></Message></Response>';
+    var resp  = '<Response><Message><Body>' + body + '</Body><Media>' + media + '</Media></Message></Response>';
     res.status(200)
         .contentType('text/xml')
         .send(resp);
@@ -287,10 +287,7 @@ var UserActions = function() {
     console.log("userJoin");//is this pretty much a built in minitest?
     var body  = "Thank you for registering. Text the word 'map' to set your location. Find out more at BadBatchAlert.com";
     var media = "http://www.mike-legrand.com/BadBatchAlert/logoSmall150.png";
-    var resp  = '<Response><Message><Body>' + body + '</Body><Media>' + media + '</Media></Message></Response>';
-    res.status(200)//does res.status check the server for a 200 status or send it?
-      .contentType('text/xml')//are these built-in functions from twilio?
-      .send(resp);
+    return self.userResponse(body,media);
   };
 	
   //list commands that a user can send
@@ -344,10 +341,7 @@ var UserActions = function() {
       var insertQuery = client.query(insertQueryString);
       insertQuery.on('end', function() {
         var body = "👍 You are all set to receive alerts in region " + region;
-        var resp = '<Response><Message><Body>' + body + '</Body></Message></Response>';
-        res.status(200)
-        .contentType('text/xml')
-        .send(resp);
+        return self.userResponse(body);
       });
     });
   };
@@ -397,7 +391,7 @@ var UserActions = function() {
      			 "e.g., resources2, to receive a list of resources in that region "; 
      //question - am i correctly calling this function?
      
-    return self.userResponse(body)
+    return self.userResponse(body);
   };//concept of composed method
    
    /*separate functions into two. send the resources based on set user location with instruactions on how to 
