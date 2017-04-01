@@ -47,7 +47,8 @@ function doAction(res, client, sender, body)
 // [START receive_call]
 app.post('/call/receive', function (req, res) {
   var resp = new TwimlResponse();
-  resp.say('Thanks for calling Bad Batch Alert. Lets save some lives!.');
+  var voiceURL = 'http://www.mike-legrand.com/BadBatchAlert/Info.m4a';
+  resp.play(voiceURL);
 
   res.status(200)
     .contentType('text/xml')
