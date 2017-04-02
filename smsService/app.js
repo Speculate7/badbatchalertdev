@@ -47,7 +47,7 @@ function doAction(res, client, sender, body)
 // [START receive_call]
 app.post('/call/receive', function (req, res) {
   var resp = new TwimlResponse();
-  var voiceURL = 'http://www.mike-legrand.com/BadBatchAlert/Info.m4a';
+  var voiceURL = 'http://www.mike-legrand.com/BadBatchAlert/Info.mp3';
   resp.play(voiceURL);
 
   res.status(200)
