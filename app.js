@@ -25,6 +25,7 @@ var bodyParser    = require('body-parser').urlencoded({extended: false});
 var CryptoHelper  = require('./cryptoHelper');
 var AdminActions  = require('./adminActions');
 var UserActions   = require('./userActions');
+var VoiceActions  = require('./voiceActions');
 
 var app      = express();
 
@@ -32,65 +33,126 @@ var G = {
   twilio:           twilio,
   adminActions:     new AdminActions(),
   userActions:      new UserActions(),
+  voiceActions:     new VoiceActions(),
   cryptoHelper:     new CryptoHelper(),
 };
 
 
-function doAction(res, client, sender, body)
+//Trying global clients instead of 1 per message.
+pg.defaults.ssl = true;
+var appClient;
+pg.connect(process.env.DATABASE_URL, function(err, client) {
+  if (err) throw err;
+    console.log('App client Connected to db');
+    appClient = client;
+});
+
+var userClient;
+pg.connect(process.env.DATABASE_URL, function(err, client) {
+  if (err) throw err;
+    console.log('User client Connected to db');
+    userClient = client;
+});
+
+var historyClient;
+pg.connect(process.env.DATABASE_URL, function(err, client) {
+  if (err) throw err;
+    console.log('History client Connected to db');
+    historyClient = client;
+});
+
+
+function doAction(res, sender, body)
 {
-  var messageHandled = G.adminActions.doAdminAction(G, res, client, sender, body);
-  if (!messageHandled) {
-    G.userActions.doUserAction(G, res, client, sender, body);
-  }
+  var messageHandled = G.adminActions.doAdminAction(G, res, userClient, sender, body);
+  if (messageHandled) return;
+
+  insertUser(res, sender, body, function() {
+    storeMessageHistory(G, res, userClient, sender, body, function(messageHistory) {
+      G.userActions.doUserAction(G, res, userClient, sender, body, messageHistory);
+    });
+  });
+}
+
+function insertUser(res, sender, body, callback)  {
+
+  var cryptoSender = G.cryptoHelper.encrypt(sender);
+  var date = new Date();
+  var timestamp = date.toGMTString();
+  var insertQueryString = "INSERT INTO users (phone_number, message_body, timestamp) VALUES ('" + cryptoSender + "', '" + body + "', '" + timestamp + "')";
+  var insertQuery = appClient.query(insertQueryString);
+  insertQuery.on('error', function() {
+    console.log("It's cool we're already in here.");
+    if (callback) callback();
+  });
+  insertQuery.on('end', function() {
+    console.log("New User Added.");
+    if (callback) callcack();
+  });
+
+}
+
+//storing history as a single string separated by the '*' character.
+//only keep last 5 messages.
+//trying to stay with free db.
+function storeMessageHistory(g, res, userClient, sender, body, callback) {
+  var divider = '*';
+  var historyLength = 5;
+  var cryptoSender = G.cryptoHelper.encrypt(sender);
+  var findQueryString = "SELECT * FROM users WHERE phone_number = '" + cryptoSender + "'";
+  var findQuery = historyClient.query(findQueryString);
+  findQuery.on('row', function(row) {
+    console.log(JSON.stringify(row));
+    var messageHistory = (body + divider + row.message_body).split(divider);
+    messageHistory = messageHistory.slice(0, historyLength);
+    
+    if (callback) callback(messageHistory);
+
+    var newBody = messageHistory.join(divider);
+
+    var queryString = "UPDATE users SET message_body = '" + newBody + "' WHERE phone_number = '" + cryptoSender + "'";
+    var udpateQuery = historyClient.query(queryString);
+    udpateQuery.on('end', function() {
+      console.log("message history updated to " + newBody);
+    });
+  });
 }
 
 // [START receive_call]
-app.post('/call/receive', function (req, res) {
-  var resp = new TwimlResponse();
-  resp.say('Thanks for calling Bad Batch Alert. Lets save some lives!.');
+app.post('/call/receive', bodyParser, function (req, res) {
+  
+  var sender = req.body.From;
+  var body   = "phone call";
+  console.log ('SENDER:' + sender + ', BODY:' + body);
+  insertUser(res, sender, body);
 
-  res.status(200)
-    .contentType('text/xml')
-    .send(resp.toString());
+  G.voiceActions.doVoiceActions(req, res);
+ 
 });
 // [END receive_call]
 
-
 // [START receive_sms]
 app.post('/sms/receive', bodyParser, function (req, res) {
-  
   var sender = req.body.From;
   var body   = req.body.Body;
   console.log ('SENDER:' + sender + ', BODY:' + body);
-
-  //connect to the db
-  pg.defaults.ssl = true;
-  doAction(res, client, sender, body);
-  pg.connect(process.env.DATABASE_URL, function(err, client) {
-    if (err) throw err;
-    console.log('Connected to db');
-
-    //add sender to the db before we do anything else. 
-    var cryptoSender = G.cryptoHelper.encrypt(sender);
-    var date = new Date();
-    var timestamp = date.toGMTString();
-    var insertQueryString = "INSERT INTO users (phone_number, message_body, timestamp) VALUES ('" + cryptoSender + "', '" + body + "', '" + timestamp + "')";
-    var insertQuery = client.query(insertQueryString);
-    insertQuery.on('error', function() {
-      console.log("It's cool we're already in here.");
-    });
-    insertQuery.on('end', function() {
-      console.log("New User Added.");
-    });
-  });
+  doAction(res, sender, body);
 });
 // [END receive_sms]
+
+// Voice to text test
+app.post('/watson/receive', function (test) {
+  console.log("inside watson call");
+  console.log(test);
+});
+
 
 // Start the server
 var server = app.listen(process.env.PORT || '8080', function () {
   console.log('Bad Batch Alert listening on port %s', server.address().port);
   console.log('Press Ctrl+C to quit.');
 });
+
 
 
 
